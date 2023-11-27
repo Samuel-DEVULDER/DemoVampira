@@ -343,7 +343,7 @@ ml_skip2:
 
 
 sin_cos_table:
-	incbin	"c2p/sincos3.x"
+	incbin	"data/sincos3.x"
 font:
   dc.b	%01111100
   dc.b	%10000110
