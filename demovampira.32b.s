@@ -1,12 +1,12 @@
-screen_width       EQU 640
-screen_height      EQU 360
+screen_width       EQU WIDTH
+screen_height      EQU HEIGHT
 screen_depth       EQU 6
 bitplane_size      EQU (screen_width*screen_height)/8+8
 chunky_buffer_size EQU (screen_width*screen_height)
 planar_buffer_size EQU ((screen_width*screen_height)/8+8)*screen_depth
-header		       EQU 128
+header		   EQU 128
 
-BILINEAR		   EQU 1
+PIXMGR				equ	1
 
 image_buffer_adr EQU $08104000
 fastmem_adr    EQU $08000000
@@ -273,6 +273,31 @@ draw_sprite2
 	rts
 
 
+;******************************************
+
+pixmrg 
+	rsreset	3*4
+	rs.l	4
+.k	rs.w	1
+.pix1	rs.w	1
+.pix2	rs.w	1
+	movem.l d0-d1/a1,-(sp)
+	lea	_PIXMRG,a1
+	moveq	#0,d0
+	
+	move.w  .k(sp),d0
+	lsl.l	#PREC,d0
+	move.w	.pix2(sp),d0
+	move.w	(a1,d0.l*2),d1
+	
+	eor.l	#(1<<(16+PREC))-1,d0
+	move.w	.pix1(sp),d0
+	add.w	(a1,d0.l*2),d1
+	
+	move.w	d1,.k(sp)	; return value
+	movem.l (sp)+,d0-d1/a1
+	rts
+	
 ;**************** update koordinates *******	
 update_rotate:
 	move.l	zoom_dir-DATA(A6),d0
@@ -283,7 +308,7 @@ update_rotate:
 ; manage zoom	
 	tst	d0
 	blt.s	ml_negative
-	cmp.w   zoom_max-DATA(a6),d1
+	cmp	#550*640/WIDTH,d1
 	blt	ml_skip
 ml_change:
 	neg.l	D0
@@ -295,7 +320,14 @@ ml_negative:
 	neg.l	D0
 	move.l	d0,zoom_dir-DATA(A6)
 
-	bsr		rotate_textures
+	move.l  textureptr-DATA(A6),D0
+	move.l  textureptr2-DATA(A6),textureptr-DATA(A6)
+	move.l  textureptr3-DATA(A6),textureptr2-DATA(A6)
+	move.l  textureptr4-DATA(A6),textureptr3-DATA(A6)
+	move.l  textureptr5-DATA(A6),textureptr4-DATA(A6)
+	move.l  textureptr6-DATA(A6),textureptr5-DATA(A6)
+	move.l  textureptr7-DATA(A6),textureptr6-DATA(A6)
+	move.l	D0,textureptr7-DATA(A6)
 
 ml_skip:
 
@@ -309,7 +341,7 @@ ml_skip2:
 
 	rts
 
-	xdef	sin_cos_table
+
 sin_cos_table:
 	incbin	"c2p/sincos3.x"
 font:
@@ -414,69 +446,53 @@ MODELINE:    dc.w 640,656,752,800,480,490,492,525,3   ; VAL_MODELINE
 
 ; *** Data-Section 
 
-			xdef	ds_zoom
-			xdef	ds_angle
-zoom_max: 	dc.w	0
-zoom_dir: 	dc.l	1
-ds_zoom:  	dc.l	100
-ds_angle: 	dc.l	0
-countX:   	dc.w 	0
-counter:  	dc.w 	0
-counter1: 	dc.w 	0
-countY:   	dc.w 	0	
-startX:  	dc.l 	0
-startY:   	dc.l 	0
-CountRow: 	dc.w 	0
+
+zoom_dir:
+	dc.l    1
+ds_zoom:  dc.l	100
+ds_angle: dc.l	0
+countX:   dc.w 0
+counter:  dc.w 0
+counter1: dc.w 0
+countY:   dc.w 0	
+startX:   dc.l 0
+startY:   dc.l 0
+CountRow: dc.w 0
 REGA7:		dc.l	0
-textureptr  dc.l 	header+image_data0
-			dc.l    header+image_data0+(image_data1-image_data0)
-			dc.l    header+image_data0+(image_data1-image_data0)*2
-			dc.l    header+image_data0+(image_data1-image_data0)*3
-			dc.l    header+image_data0+(image_data1-image_data0)*4
-			dc.l    header+image_data0+(image_data1-image_data0)*5
-			dc.l    header+image_data0+(image_data1-image_data0)*6
-			dc.l    header+image_data0+(image_data1-image_data0)*7
-			dc.l    header+image_data0+(image_data1-image_data0)*8
-			dc.l    header+image_data0+(image_data1-image_data0)*9
-			dc.l    header+image_data0+(image_data1-image_data0)*10
-			dc.l    header+image_data0+(image_data1-image_data0)*11
-			dc.l	0		; sentinel
+textureptr   dc.l 0
+textureptr2  dc.l 0
+textureptr3  dc.l 0
+textureptr4  dc.l 0
+textureptr5  dc.l 0
+textureptr6  dc.l 0
+textureptr7  dc.l 0
 
 DATA:
-	xref	image_data
 image_data:	
 	dcb.l	256*256
-	dcb.l	256*2
-	
-image_data0
-	incbin "data/merry.dds"
-	ds.w 256
-image_data1:
-;	incbin	"data/vamp-bike.dds"
-;	ds.w	256
-	incbin	"data/vamp-pinup.dds"
-	ds.w	256
-	incbin  "data/skippJuneBug.dds"
-	ds.w    256
-	incbin	"data/256x256.dds"
-	ds.w	256
-	incbin	"data/santa.dds"
-	ds.w	256
-	incbin "data/fox.dds"
-	ds.w 256
-	incbin "data/mandrill.dds"
-	ds.w 256
-	incbin "data/wolf.dds"
-	ds.w 256
-	incbin "data/leopard.dds"
-	ds.w 256
-	incbin "data/owl.dds"
-	ds.w 256
-	incbin "data/goat.dds"
-	ds.w 256
-	incbin "data/kitty.dds"
-	ds.w 256
+	dcb.l	256*4
 
+image_data1:	
+	incbin "fox.dds"
+	ds.w 256
+image_data2:	
+	incbin "mandrill.dds"
+	ds.w 256
+image_data3:	
+	incbin "wolf.dds"
+	ds.w 256
+image_data4:	
+	incbin "leopard.dds"
+	ds.w 256
+image_data5:	
+	incbin "owl.dds"
+	ds.w 256
+image_data6:	
+	incbin "goat.dds"
+	ds.w 256
+image_data7:	
+	incbin "kitty.dds"
+	ds.w 256
 ;--------------------------------------------------------------	
 ; NdSam: interface with main.c
 ;--------------------------------------------------------------	
@@ -501,7 +517,7 @@ _update_rotate68k
 ; manage zoom	
 	tst	d0
 	blt.s	.ml_negative
-	cmp.w   zoom_max-DATA(a6),d1
+	cmp		#550*640/WIDTH,d1
 	blt		.ml_skip
 .ml_change:
 	neg.l	D0
@@ -513,8 +529,14 @@ _update_rotate68k
 	neg.l	D0
 	move.l	d0,zoom_dir-DATA(a6)
 
-	bsr		rotate_textures
-	
+	move.l  textureptr-DATA(a6),D0
+	move.l  textureptr2-DATA(a6),textureptr-DATA(a6)
+	move.l  textureptr3-DATA(a6),textureptr2-DATA(a6)
+	move.l  textureptr4-DATA(a6),textureptr3-DATA(a6)
+	move.l  textureptr5-DATA(a6),textureptr4-DATA(a6)
+	move.l  textureptr6-DATA(a6),textureptr5-DATA(a6)
+	move.l  textureptr7-DATA(a6),textureptr6-DATA(a6)
+	move.l	D0,textureptr7-DATA(a6)
 	
 	bsr		uncompress_texture
 
@@ -536,146 +558,174 @@ _draw_sprite080
     move.l 4(sp),a1
 	movem.l d2-d7/a2-a6,-(sp)
 	lea	DATA(pc),a6
-	move.l	textureptr-DATA(A6),a0
-	moveq	#0,d0			; fixed src_x
-	moveq	#0,d1			; fixed src_y
-	moveq	#0,d2			; dest_x
-	moveq	#0,d3			; dest_y
+	bsr draw_sprite2
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+	
+	xdef _draw_sprite68k
+_draw_sprite68k
+	move.l	4(sp),a1
+	movem.l	d2-d7/a2-a6,-(sp)
+	lea		image_data(pc),a0
+	lea		_PIXMRG,a6
+	
+	moveq	#0,d0		; fixed src_x
+	moveq	#0,d1		; fixed src_y
+	moveq	#0,d2		; dest_x
+	moveq	#0,d3		; dest_y
 	
 	; calc angles
-	move.l	ds_angle-DATA(A6),d6
-	move.l	ds_zoom-DATA(A6),d4	; fixed dx
-	move.l	D4,D5			; fixed dy
+	move.l	ds_angle(pc),d6
+	move.l	ds_zoom(pc),d4	; fixed dx
+	move.l	D4,D5	; fixed dy
+
 
 	lea	sin_cos_table(pc),a2
-	lea	sin_cos_table+720(pc),a3
-	muls	(a3,d6*2),d4	; cos
+	muls	720(a2,d6*2),d4	; cos
 	asr.l	#4,d4
-     
-	muls	(a2,d6*2),d5	; sin
+	muls	000(a2,d6*2),d5	; sin
 	asr.l	#4,d5
 
 	move.l	D4,A4
 	move.l	D5,A5
 
+	move.l  #$00008000,D7	   ; fixed start_x
+	move.l  #$00008000,A3	   ; fixed start_y
 
-    move.l  #$00008000,startX-DATA(A6)	; fixed start_x
-    move.l  #$00008000,startY-DATA(A6)	; fixed start_y
-
- 	move.l	a1,A3
-	xref	_HEIGHT
-    move.w  _HEIGHT+2,CountRow-DATA(A6)
-
+	move.w  #screen_height-1,D3
 .ds_loop1:
-    move.l  startX-DATA(A6),D0			; src_x = start_x       
-    move.l  startY-DATA(A6),D1			; src_y = start_y
+	move.l	d7,d0				; src_x = start_x 
+	move.l	a3,d1				; src_y = start_y
 
-	xref	_WIDTH
-	dc.w	$7181					; BANK
-	move.w  _WIDTH+2,D7     	; move.w #,E7 dest_x
-	dc.w	$7101					; BANK
-	subq.w	#1,D7
+	move.w  #screen_width-1,d2	      ; dest_x
+
 .ds_loop2:
-	bfextu  D1{8:6},D4				; Y
-	move.l	D1,D3					; fused*
-	addi.l	#$10000,D3				; Y+1		
-
-	bfextu  D0{8:6},D5				; X
-	move.l	D0,D7					; fused*
-	addi.l	#$10000,D7				; X+1		
-
-	bfextu  D7{8:6},D2				; X+1
-	lsl.w	#6,D4			
-
-	dc.w	$FE3F,$0A03,$0123,$45CD	; VPERM  D3,D0,E2
-	dc.w    $FF01,$1004	    		; VSTORE D1,E9!
-
-	dc.w	$FE3F,$7B03,$0123,$45CD	; VPERM D3,D7,E3
-	move.l	D4,D6					; fused*
-	or.b	D5,D6					; PTR-(Y0,X0)
-
-	bfextu  D3{8:6},D3				; Y+1
-	or.b	D2,D4					; PTR-(Y0,X1)
-
-	dc.w	$FE3F,$0801,$0123,$45CD	; VPERM D1,D0,E0
-	lsl.w	#6,D3					; Y1
-
-	dc.w	$FE3F,$7901,$0123,$45CD	; VPERM D1,D7,E1
-	move.l	D3,D7					; Fused
-	or.b	D5,D7					; PTR (Y1,X0)
-
-	dc.w    $FE30,$8C3B,$6e00       ; dtx (A0,D6.L*8),E0,E4
-	or.b	D2,D3					; PTR (Y1,X1)
-
-	dc.w    $FE30,$9D3B,$4e00       ; dtx (A0,D4.L*8),E1,E5
-	dc.w    $Fe08,$0004	     		; VSTORE D0,E0!
-
-	dc.w    $FE0C,$0D2B   			; pixmrg E4,D0,E5*   Merge X0 X1
-	; *
-
-	dc.w    $FE30,$AC3B,$7e00       ; dtx (A0,D7.L*8),E2,E4
-	add.l   A4,D0					; + X Step
- 
-	dc.w    $FE30,$B63B,$3e00       ; dtx (A0,D3.L*8),E3,D6
-	add.l   A5,D1					; + Y step
-
-	dc.w    $FE0C,$862B				; pixmrg E4,E0!,D6   Merge X2 X3
-	; *
-
-	dc.w    $FE8D,$162B				; pixmrg E5,E9!,D6
-	; *
-
-	move.l  D6,(A3)+	 	; move pixel to screen
-	dc.w 	$7141			; BANK
-	dbf     D7,.ds_loop2	; DBRA E7
+	move.l  D1,D6
 	
-	move.l	_WIDTH,d5
-	lsl.l	#2,d5
-	xref	_rowbytes
-	sub.l	_rowbytes,d5
-	sub.l	d5,a3
+*	dc.w    %0100110011000000,%0110000000101001  ; PERM #0051,D0,D6
+	lsr.l	#8,d6
+	swap	d0
+	move.b	d0,d6
+	swap	d0
+	
+	andi.l  #$FFFF,D6
 
-	move.l  startX-DATA(A6),D5
-	sub.l   A5,D5
-	move.l	D5,startX-DATA(A6)		; start_x -= dy
+* no bilinear
+*	move.w  (a0,d6.l*2),D5
 
-	move.l  startY-DATA(A6),D5
-	add.l   A4,D5
-	move.l	D5,startY-DATA(A6)		; start_y += dx
+* bilinear
+*	dc.w    $FE30,$042B,$6a00  ; pixmrg (A0,D6.L*2),D0,D4
+*	dc.w    $FE31,$052B,$6a00  ; pixmrg (A1,D6.L*2),D0,D5
 
-	subq.w	#1,CountRow-DATA(A6)
-	bne		.ds_loop1
+	lea		(a0,D6.L*4),a2
+	
+	ifeq	PIXMGR
+	move.l	(a2),d5
+	bra		.zzz
+	endc
+	
+	move.w	d0,d6
+	lsl.l	#PREC,d6
+	
+	move.w	0000+4(a2),d6
+	move.w	(a6,d6.l*2),d4
+	swap	d4
+	move.w	0000+6(a2),d6
+	move.w	(a6,d6.l*2),d4
+	
+	move.w	1024+4(a2),d6
+	move.w	(a6,d6.l*2),d5
+	swap	d5
+	move.w	1024+6(a2),d6
+	move.w	(a6,d6.l*2),d5
 
-	movem.l (sp)+,d2-d7/a2-a6
+	eor.l	#(1<<(16+PREC))-1,d6
+	
+	move.w	0000+2(a2),d6
+	add.w	(a6,d6.l*2),d4
+	swap	d4
+	move.w	0000+0(a2),d6
+	add.w	(a6,d6.l*2),d4
+	
+	move.w	1024+2(a2),d6
+	add.w	(a6,d6.l*2),d5
+	swap	d5
+	move.w	1024+0(a2),d6
+	add.w	(a6,d6.l*2),d5		; D4=lo:hi(y) D5=lo:hi(y+1)
+
+*	swap D4
+*	move.w D5,D4
+*	dc.w    $FE04,$152B	; pixmrg D4,D1,D5
+
+	moveq	#0,d6
+	move.w	d1,d6
+	lsl.l	#PREC,d6
+	
+	move.w	d5,d6
+	move.w	(a6,d6.l*2),d5
+	swap	d5
+	move.w	d5,d6
+	move.w	(a6,d6.l*2),d5
+	
+	eor.l	#(1<<(16+PREC))-1,d6
+	
+	move.w	d4,d6
+	move.w	(a6,d6.l*2),d4
+	swap	d4
+	move.w	d4,d6
+	move.w	(a6,d6.l*2),d4
+	
+	add.l	d4,d5
+.zzz
+	move.l  D5,(a1)+	 ; move pixel
+
+	add.l   A5,D1		; + Y step
+	add.l   A4,D0		; + X Step
+
+    dbf     d2,.ds_loop2
+
+    sub.l   A5,d7	   ; start_x -= dy
+    add.l   A4,a3	   ; start_y += dx
+
+    dbf     d3,.ds_loop1
+	movem.l	(sp)+,d2-d7/a2-a6
 	rts
-	
 
 	xdef _prepare
 _prepare:
-	move.l	#550*640*2,d0
-	divu.l	_WIDTH,d0
-	lea		zoom_max(pc),a0
-	move.w	d0,(a0)
+	lea     image_data1+header(pc),a0
+	move.l	A0,textureptr
+	bsr	CONVERT
 
-	lea		textureptr(pc),a0
-	
-.0
-	move.l	(a0)+,d0
-	beq		.1
-	move.l	a0,-(sp)
-	move.l	d0,a0
-	bsr		CONVERT
-	move.l	(sp)+,a0
-	bra		.0
-.1
+	lea     image_data2+header(pc),a0
+	move.l	A0,textureptr2
+	bsr	CONVERT
 
-; fall-through
+	lea     image_data3+header(pc),a0
+	move.l	A0,textureptr3
+	bsr	CONVERT
+
+	lea     image_data4+header(pc),a0
+	move.l	A0,textureptr4
+	bsr	CONVERT
+
+	lea     image_data5+header(pc),a0
+	move.l	A0,textureptr5
+	bsr	CONVERT
+
+	lea     image_data6+header(pc),a0
+	move.l	A0,textureptr6
+	bsr	CONVERT
+
+	lea     image_data7+header(pc),a0
+	move.l	A0,textureptr7
+	bsr	CONVERT
+
 uncompress_texture:
 	movem.l	d2-d6/a2-a3,-(sp)
 	move.l	#64*64-1,d0
 	move.l	textureptr,a0	; a0 = texture
-	xref	_PIXMRG8
-	lea		_PIXMRG8,a2
+	lea		_PIXMRG,a2
 	xref	_RGB23
 	lea		_RGB23,a3
 .1
@@ -700,29 +750,19 @@ uncompress_texture:
 ; d4=col2=(col0+col1)/2 d5=col3=0
 PERC99	set	(1<<PREC)-1
 PERC50	set	(1<<(PREC-1))
-	move.l  (a3,d2.l*4),d2
-	move.l  (a3,d3.l*4),d3
-	
-	move.b	d2,d1
-	move.b	(PERC50^PERC99)<<8(a2,d1.w),d4
-	rol.l   #8,d2
-	move.b	d3,d1
-	add.b	PERC50<<8(a2,d1.w),d4
-	rol.l   #8,d3
-	lsl.l	#8,d4
-	
-	move.b	d2,d1
-	move.b	(PERC50^PERC99)<<8(a2,d1.w),d4
-	rol.l   #8,d2
-	move.b	d3,d1
-	add.b	PERC50<<8(a2,d1.w),d4
-	rol.l   #8,d3
-	lsl.l	#8,d4
-
-	move.b	d2,d1
-	move.b	(PERC50^PERC99)<<8(a2,d1.w),d4
-	move.b	d3,d1
-	add.b	PERC50<<8(a2,d1.w),d4
+	move.l	(a3,d2.l*4),d2
+	move.l	(a3,d3.l*4),d3
+	move.w	d2,d1
+	move.w	(PERC50^PERC99)<<17(a2,d1.l*2),d4
+	move.w	d3,d1
+	add.w	PERC50<<17(a2,d1.l*2),d4
+	swap	d2
+	swap	d3
+	swap	d4
+	move.w	d2,d1
+	move.w	(PERC50^PERC99)<<17(a2,d1.l*2),d4
+	move.w	d3,d1
+	add.w	PERC50<<17(a2,d1.l*2),d4
 	bra		.3
 ; d4=col2=(2col0+col1)/3 d5=col3=(col0+2col1)/3
 PERC66	set	(2<<PREC)/3
@@ -730,35 +770,22 @@ PERC33	set	PERC66^PERC99
 .2	
 	move.l	(a3,d2.l*4),d2
 	move.l	(a3,d3.l*4),d3
-	
-	move.b  d2,d1
-	rol.l   #8,d2
-	move.b	PERC66<<8(a2,d1.w),d4
-	move.b	PERC33<<8(a2,d1.w),d5
-	move.b	d3,d1
-	rol.l   #8,d3
-	add.b	PERC33<<8(a2,d1.w),d4
-	add.b	PERC66<<8(a2,d1.w),d5
-	lsl.l   #8,d4
-	lsl.l   #8,d5
-
-	move.b  d2,d1
-	rol.l   #8,d2
-	move.b	PERC66<<8(a2,d1.w),d4
-	move.b	PERC33<<8(a2,d1.w),d5
-	move.b	d3,d1
-	rol.l   #8,d3
-	add.b	PERC33<<8(a2,d1.w),d4
-	add.b	PERC66<<8(a2,d1.w),d5
-	lsl.l   #8,d4
-	lsl.l   #8,d5
-	
-	move.b  d2,d1
-	move.b	PERC66<<8(a2,d1.w),d4
-	move.b	PERC33<<8(a2,d1.w),d5
-	move.b	d3,d1
-	add.b	PERC33<<8(a2,d1.w),d4
-	add.b	PERC66<<8(a2,d1.w),d5
+	move.w	d2,d1
+	move.w	PERC66<<17(a2,d1.l*2),d4
+	move.w	PERC33<<17(a2,d1.l*2),d5
+	move.w	d3,d1
+	add.w	PERC33<<17(a2,d1.l*2),d4
+	add.w	PERC66<<17(a2,d1.l*2),d5
+	swap	d2
+	swap	d3
+	swap	d4
+	swap	d5
+	move.w	d2,d1
+	move.w	PERC66<<17(a2,d1.l*2),d4
+	move.w	PERC33<<17(a2,d1.l*2),d5
+	move.w	d3,d1
+	add.w	PERC33<<17(a2,d1.l*2),d4
+	add.w	PERC66<<17(a2,d1.l*2),d5
 ; uncompress pixels
 .3
 	move.b	7(a0),d6
@@ -774,35 +801,11 @@ PERC33	set	PERC66^PERC99
 	bsr.s	uncomp_row
 	addq.w	#8,a0
 	dbf	d0,.1
-* adapt data
-	lea	image_data,a1
-	move.w	#256*256-1,d0
-	xref	_convert
-	tst.b	_convert
-	beq.s	.3c
-	bmi.s	.3b
-.3a
-	move.l	(a1),d1
-	lsl.l	#8,d1
-	move.l	d1,(a1)+	; RGBA
-	dbf.s	d0,.3a
-	bra.s	.3c
-.3b	
-	move.b	3(a1),d1
-	lsl.w	#8,d1
-	move.b	2(a1),d1
-	swap	d1
-	move.b	1(a1),d1
-	lsl.w	#8,d1
-	move.l	d1,(a1)+	; BGRA
-	dbf.s	d0,.3b
-.3c
 * copy first and last line
-	lea	image_data,a1
-	lea	256*256*4(a1),a0
-	move.w	#256,d0
+	lea		image_data,a1
+	move.w	#256*4-1,d0
 .4
-	move.l	(a1)+,(a0)+
+	move.l	(a1)+,256*256*4(a1)
 	dbf	d0,.4
 	movem.l	(sp)+,d2-d6/a2-a3
 	rts
@@ -852,16 +855,4 @@ CONVERT:
 	move.l	(a0)+,(a1)+
 	move.l	(a0)+,(a1)+
 	dbra	d0,.Cop1
-	rts
-
-rotate_textures
-	lea		textureptr-DATA(A6),a0
-	move.l	(a0)+,d0
-.1
-	move.l	(a0)+,d1
-	beq		.2
-	move.l	d1,-8(a0)
-	bra		.1
-.2
-	move.l	d0,-8(a0)
 	rts
