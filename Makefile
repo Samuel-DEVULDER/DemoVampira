@@ -21,7 +21,7 @@ LIBS=-lamiga -lmieee
 OBJ=main.o demovampira.o demovampira.0b.o demovampira.8b.o demovampira.16b.o
 
 test: $(EXE)
-	$< -68k
+	$< -bilinear -win
 
 all: $(EXE)
 

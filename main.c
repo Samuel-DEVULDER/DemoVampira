@@ -423,7 +423,7 @@ int main(int ac, char **av)
                         draw_sprite080(bufmem);
                     } else if(mc68040 || mc68080) {
                         if(convert) draw_sprite8b_(bufmem); 
-			else        draw_sprite8b(bufmem);
+						else        draw_sprite8b(bufmem);
                     } else {
                         draw_sprite16b(bufmem);
                     }
