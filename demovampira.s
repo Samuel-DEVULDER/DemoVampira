@@ -1,9 +1,3 @@
-screen_width       EQU 640
-screen_height      EQU 360
-screen_depth       EQU 6
-bitplane_size      EQU (screen_width*screen_height)/8+8
-chunky_buffer_size EQU (screen_width*screen_height)
-planar_buffer_size EQU ((screen_width*screen_height)/8+8)*screen_depth
 header		       EQU 128
 
 BILINEAR		   EQU 1

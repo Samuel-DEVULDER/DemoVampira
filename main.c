@@ -452,7 +452,7 @@ int main(int ac, char **av)
             if(s) {
                 static char buf[20];
                 long f = 1000*TIMINGS/(t-s);
-                sprintf(buf,"FPS: %d.%03d", f/1000, f%1000);
+                sprintf(buf,"FPS: %ld.%03ld", f/1000, f%1000);
                 // doesn't change anything ==> SetAPen(&CybRasPort, 15);
                 Text(RP, last_fps=buf, strlen(buf));
             } else {
